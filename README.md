@@ -1,4 +1,0 @@
-peluqueria
-==========
-
-testpeluqueria
