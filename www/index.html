@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <!-- WARNING: for iOS 7, remove the width=device-width and height=device-height attributes. See https://issues.apache.org/jira/browse/CB-4323 -->
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, target-densitydpi=device-dpi" />
+        <link rel="stylesheet" type="text/css" href="css/app.css" />
+        
+        <script type="text/javascript" src="js/jquery.js"></script>
+        <script type="text/javascript" src="js/jquery.tap.js"></script>
+        <script type="text/javascript" src="js/jquery.transit.js"></script>
+        <script type="text/javascript" src="js/jquery.event.move.js"></script>
+        <script type="text/javascript" src="js/jquery.event.swipe.js"></script>
+        <script type="text/javascript">
+            
+            var scaleMax = 1.01;
+            var scaleMin = 0.99;
+            
+            $(document).ready(function()
+           {
+               $.getJSON(
+                   'data/data.json',
+                   function(data)
+                   {
+                       $('body').data('photoIndex', 0);
+                       var first = false;
+                       if( $.isArray(data) )
+                       {
+                           var control = false;
+                           
+                           $.each(data, function(index, item)
+                            {
+                                if( !control ) first = item;
+                                control = true;
+                                
+                                var html = '<div class="thumbnail" style="background: transparent url('+item+') no-repeat center center; background-size: cover;" data-image="'+item+'" data-index="'+index+'"></div>';
+                                $('.thumbs').append(html);
+                            });
+                           
+                           if( first )
+                           {
+                               $('.photo').css('background', 'transparent url('+first+') no-repeat center center').css('background-size', 'cover');
+                           }
+                           
+                           /* Bind events */
+                           
+                           bindEvents(data);
+                           bindClick();
+                       }
+                   }
+               );
+           });
+            
+            function bindClick()
+            {
+                var photoIndex = $('body').data('photoIndex');
+                $('.thumbs div').unbind('click');
+                $('.thumbs div').click(function(e)
+                   {
+                       var self = this;
+                       var photo = $('.photo');
+                       photo.transition({
+                           scale: scaleMax,
+                           complete: function()
+                           {
+                               photo.transition({
+                                   scale: scaleMin,
+                                   complete: function()
+                                   {
+                                       photo.css('background', 'transparent url('+$(self).data('image')+') no-repeat center center').css('background-size', 'cover');
+                                       photo.transition({
+                                           scale: scaleMax,
+                                           complete: function()
+                                           {
+                                               photo.transition({
+                                                   scale: 1
+                                               });
+                                           }
+                                       });
+
+                                       photoIndex = $(self).data('index');
+                                       $('body').data('photoIndex', photoIndex);
+                                   }
+                               });
+                           }
+                       });
+                   });
+            }
+            
+            function bindEvents(data)
+            {
+                var thumbsIndex = 0;
+                var photoIndex  = 0;
+                
+                $('.thumbs div, .arrow-up, .arrow-down, .arrow-left, .arrow-right').unbind('click');
+                $('.arrow-up, .arrow-down').unbind('taphold');
+
+                var offset               = $('.thumbs div:first').outerHeight(true);
+                var actualOffset         = 0;
+                var visible              = $('.thumbs-container').height();
+                var max                  = $('.thumbs').height();
+                var scrollTimer          = false;
+                var isExecuting          = false;
+
+                $('.arrow-up').on('taphold', function()
+                  {
+                      if( !isExecuting )
+                      {
+                          isExecuting = true;
+                          actualOffset -= offset;
+                          $('.thumbs').transition({
+                              marginTop: actualOffset,
+                              complete: function()
+                              {
+                                  $('.thumbs').append($('.thumbs div:first').clone());
+                                  actualOffset += offset;
+                                  $('.thumbs div:first').remove();
+                                  $('.thumbs').css('margin-top', actualOffset);
+                                  bindClick();
+                                  isExecuting = false;
+                              }
+                          });
+                      }
+
+                      scrollTimer = setInterval(function()
+                        {
+                            if( !isExecuting )
+                            {
+                                isExecuting = true;
+                                actualOffset -= offset;
+                                $('.thumbs').transition({
+                                    marginTop: actualOffset,
+                                    complete: function()
+                                    {
+                                        $('.thumbs').append($('.thumbs div:first').clone());
+                                        actualOffset += offset;
+                                        $('.thumbs div:first').remove();
+                                        $('.thumbs').css('margin-top', actualOffset);
+                                        bindClick();
+                                        isExecuting = false;
+                                    }
+                                });
+                            }
+                        }, 200);
+                  });
+
+                $('.arrow-down').on('taphold', function()
+                {
+                    if( !isExecuting )
+                    {
+                        isExecuting = true;
+                        actualOffset -= offset;
+                        $('.thumbs').css('margin-top', actualOffset);
+                        $('.thumbs').prepend($('.thumbs div:last').clone());
+                        actualOffset += offset;
+                        $('.thumbs').transition({
+                            marginTop: actualOffset,
+                            complete: function()
+                            {
+                                $('.thumbs div:last').remove();
+                                bindClick();
+                                isExecuting = false;
+                            }
+                        });
+                    }
+
+                    scrollTimer = setInterval(function()
+                  {
+                      if( !isExecuting )
+                      {
+                          isExecuting = true;
+                          actualOffset -= offset;
+                          $('.thumbs').css('margin-top', actualOffset);
+                          $('.thumbs').prepend($('.thumbs div:last').clone());
+                          actualOffset += offset;
+                          $('.thumbs').transition({
+                              marginTop: actualOffset,
+                              complete: function()
+                              {
+                                  $('.thumbs div:last').remove();
+                                  bindClick();
+                                  isExecuting = false;
+                              }
+                          });
+                      }
+                  }, 200);
+                });
+
+                $('.arrow-up, .arrow-down').on('touchend', function()
+               {
+                   clearInterval(scrollTimer);
+               });
+                
+                $('.arrow-up').click(function()
+                {   
+                    if( !isExecuting )
+                    {
+                        isExecuting = true;
+                        actualOffset -= offset;
+                        $('.thumbs').transition({
+                            marginTop: actualOffset,
+                            complete: function()
+                            {
+                                $('.thumbs').append($('.thumbs div:first').clone());
+                                actualOffset += offset;
+                                $('.thumbs div:first').remove();
+                                $('.thumbs').css('margin-top', actualOffset);
+                                bindClick();
+                                isExecuting = false;
+                            }
+                        });
+                    }
+                });
+
+                $('.arrow-down').click(function()
+               {   
+                   if( !isExecuting )
+                   {
+                       isExecuting = true;
+                       actualOffset -= offset;
+                       $('.thumbs').css('margin-top', actualOffset);
+                       $('.thumbs').prepend($('.thumbs div:last').clone());
+                       actualOffset += offset;
+                       $('.thumbs').transition({
+                           marginTop: actualOffset,
+                           complete: function()
+                           {
+                              $('.thumbs div:last').remove();
+                               bindClick();
+                               isExecuting = false;
+                           }
+                       });
+                   }
+               });
+
+               $('.arrow-left').click(function()
+               {
+                   var _index = $('body').data('photoIndex');
+                   _index--;
+                   if( _index < 0 ) _index = (data.length-1);
+
+                   var photo = $('.photo');
+                   photo.transition({
+                       scale: scaleMax,
+                       complete: function()
+                       {
+                           photo.transition({
+                               scale: scaleMin,
+                               complete: function()
+                               {
+                                   photo.css('background', 'transparent url('+data[_index]+') no-repeat center center').css('background-size', 'cover');
+                                   photo.transition({
+                                       scale: scaleMax,
+                                       complete: function()
+                                       {
+                                           photo.transition({
+                                               scale: 1
+                                           });
+                                           photoIndex = _index;
+                                           $('body').data('photoIndex', photoIndex);
+                                       }
+                                   });
+                               }
+                           });
+                       }
+                   });
+               });
+
+                $('.arrow-right').click(function()
+                {
+                    var _index = $('body').data('photoIndex');
+                    _index++;
+                    if( _index == data.length ) _index = 0;
+                    var photo = $('.photo');
+                    photo.transition({
+                        scale: scaleMax,
+                        complete: function()
+                        {
+                            photo.transition({
+                                scale: scaleMin,
+                                complete: function()
+                                {
+                                    photo.css('background', 'transparent url('+data[_index]+') no-repeat center center').css('background-size', 'cover');
+                                    photo.transition({
+                                        scale: scaleMax,
+                                        complete: function()
+                                        {
+                                            photo.transition({
+                                                scale: 1
+                                            });
+                                            photoIndex = _index;
+                                            $('body').data('photoIndex', photoIndex);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+                
+               $('.photo').on('swiperight', function()
+               {
+                   var _index = $('body').data('photoIndex');
+                   _index--;
+                   if( _index < 0 ) _index = (data.length-1);
+
+                   var photo = $('.photo');
+                   photo.transition({
+                       scale: scaleMax,
+                       complete: function()
+                       {
+                           photo.transition({
+                               scale: scaleMin,
+                               complete: function()
+                               {
+                                   photo.css('background', 'transparent url('+data[_index]+') no-repeat center center').css('background-size', 'cover');
+                                   photo.transition({
+                                       scale: scaleMax,
+                                       complete: function()
+                                       {
+                                           photo.transition({
+                                               scale: 1
+                                           });
+                                           photoIndex = _index;
+                                           $('body').data('photoIndex', photoIndex);
+                                       }
+                                   });
+                               }
+                           });
+                       }
+                   });
+               });
+
+                $('.photo').on('swipeleft', function()
+                {
+                    var _index = $('body').data('photoIndex');
+                    _index++;
+                    if( _index == data.length ) _index = 0;
+                    var photo = $('.photo');
+                    photo.transition({
+                        scale: scaleMax,
+                        complete: function()
+                        {
+                            photo.transition({
+                                scale: scaleMin,
+                                complete: function()
+                                {
+                                    photo.css('background', 'transparent url('+data[_index]+') no-repeat center center').css('background-size', 'cover');
+                                    photo.transition({
+                                        scale: scaleMax,
+                                        complete: function()
+                                        {
+                                            photo.transition({
+                                                scale: 1
+                                            });
+                                            photoIndex = _index;
+                                            $('body').data('photoIndex', photoIndex);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+        </script>
+        <title>Simple Gallery</title>
+    </head>
+    <body>
+        <div class="wrapper">
+            <div class="main-photo">
+                <div class="arrow-left"></div>
+                <div class="photo-container">
+                    <div class="photo">
+
+                    </div>
+                </div>
+                <div class="arrow-right"></div>
+            </div>
+            <div class="sidebar">
+                <div class="thumbnail-strip">
+                    <div class="arrow-up"></div>
+                    <div class="thumbs-container">
+                        <div class="thumbs">
+
+                        </div>
+                    </div>
+                    <div class="arrow-down"></div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
